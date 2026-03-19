@@ -16,7 +16,14 @@ Parámetros optimizados para hardware limitado:
   - FPS de scan: 1 por segundo (evita saturar el servidor LAN)
 """
 
-import cv2
+try:
+    import cv2
+    import face_recognition
+except ImportError:
+    cv2 = None
+    face_recognition = None
+    print("Aviso: Librerías de visión no instaladas. Modo API activo.")
+    
 import threading
 import time
 import logging

@@ -14,7 +14,14 @@ import base64
 import logging
 from typing import Optional
 
-import cv2
+try:
+    import cv2
+    import face_recognition
+except ImportError:
+    cv2 = None
+    face_recognition = None
+    print("Aviso: Librerías de visión no instaladas. Modo API activo.")
+
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session

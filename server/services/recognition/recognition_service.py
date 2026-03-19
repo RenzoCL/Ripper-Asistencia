@@ -38,7 +38,14 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple, List
 
-import cv2
+try:
+    import cv2
+    import face_recognition
+except ImportError:
+    cv2 = None
+    face_recognition = None
+    print("Aviso: Librerías de visión no instaladas. Modo API activo.")
+    
 import numpy as np
 
 logger = logging.getLogger(__name__)
