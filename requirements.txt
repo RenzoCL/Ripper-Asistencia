@@ -1,128 +1,38 @@
-# =============================================================
-# requirements.txt — Servidor (PC central con el backend)
-# =============================================================
-# Instalar con:
-#   pip install -r requirements.txt
-#
-# En Windows antes de instalar face-recognition necesitas:
-#   1. Visual Studio Build Tools 2019+ con "C++ build tools"
-#      https://visualstudio.microsoft.com/visual-cpp-build-tools/
-#   2. cmake: pip install cmake
-#   3. Luego: pip install dlib face-recognition
-#
-# En Ubuntu/Debian antes de instalar face-recognition:
-#   sudo apt-get update
-#   sudo apt-get install -y build-essential cmake libopenblas-dev liblapack-dev
-#   sudo apt-get install -y libx11-dev libgtk-3-dev python3-dev
-#   pip install dlib face-recognition
-# =============================================================
+# --- CORE API ---
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
 
+# --- BASE DE DATOS (Supabase + Local) ---
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0
 
-# ----------------------------------------------------------
-# API FRAMEWORK
-# ----------------------------------------------------------
-fastapi==0.115.5
-uvicorn[standard]==0.32.1       # Servidor ASGI (incluye websockets, watchfiles)
-python-multipart==0.0.18        # Soporte upload de archivos en FastAPI (REQUERIDO)
+# --- VALIDACIÓN (Versiones estables para evitar error de pydantic-core) ---
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0.post1
 
+# --- SEGURIDAD ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 
-# ----------------------------------------------------------
-# BASE DE DATOS
-# ----------------------------------------------------------
-sqlalchemy==2.0.36              # ORM + engine SQLite
-# SQLite viene incluido en Python — no requiere instalación extra
+# --- RECONOCIMIENTO FACIAL ---
+# Usamos la versión "headless" de OpenCV para que pese menos y no pida librerías de monitor
+opencv-python-headless==4.8.1.78
+numpy==1.26.4
+Pillow==10.2.0
+face-recognition==1.3.0
 
+# --- NOTIFICACIONES Y UTILIDADES ---
+httpx==0.25.2
+aiofiles==23.2.1
+pytz==2023.3.post1
 
-# ----------------------------------------------------------
-# VALIDACIÓN Y CONFIGURACIÓN
-# ----------------------------------------------------------
-pydantic==2.10.3                # Validación de datos (V2 — compatible con el código)
-pydantic-settings==2.7.0        # Lectura de .env con Pydantic V2
-email-validator==2.2.0          # Requerido por pydantic.EmailStr en schemas.py
+# --- REPORTES ---
+openpyxl==3.1.2
+reportlab==4.0.9
 
-
-# ----------------------------------------------------------
-# CLIENTE / UI
-# ----------------------------------------------------------
-customtkinter==5.2.2        # UI moderna para la app de portería
-
-
-
-# ----------------------------------------------------------
-# SEGURIDAD: JWT + HASHING
-# ----------------------------------------------------------
-python-jose[cryptography]==3.3.0   # JWT tokens (firma y verificación)
-passlib==1.7.4                     # Hash de contraseñas (interfaz bcrypt)
-bcrypt==4.0.1                      # Motor bcrypt — versión 4.0.x es compatible con passlib 1.7.4
-                                   # IMPORTANTE: bcrypt >= 4.1 rompe passlib 1.7.4
-
-
-# ----------------------------------------------------------
-# RECONOCIMIENTO FACIAL
-# ----------------------------------------------------------
-# NIVEL 1 — LBPH: requiere opencv-contrib (no opencv-python simple)
-opencv-contrib-python==4.10.0.84   # OpenCV + módulos extra (cv2.face.LBPHFaceRecognizer)
-                                   # Si ya tienes opencv-python instalado, desinstálalo primero:
-                                   # pip uninstall opencv-python && pip install opencv-contrib-python
-
-numpy==1.26.4                      # Requerido por OpenCV y face_recognition
-Pillow==11.0.0                     # Procesamiento de imágenes (upload, conversión)
-
-# NIVEL 2 y 3 — HOG / CNN: requiere dlib
-# Instalar DESPUÉS de los requisitos del sistema listados arriba
-face-recognition==1.3.0            # HOG y CNN (instala dlib automáticamente como dependencia)
-# Modelos de pesas para la IA (clonado directo para evitar errores de descarga)
-git+https://github.com/ageitgey/face_recognition_models
-# dlib se compila al instalar face-recognition — puede tardar 5-15 minutos
-
-
-# ----------------------------------------------------------
-# NOTIFICACIONES
-# ----------------------------------------------------------
-httpx==0.28.1                      # Cliente HTTP async para Telegram Bot API
-                                   # (más liviano que python-telegram-bot para solo enviar msgs)
-
-# WhatsApp Web via Selenium (OPCIONAL — solo si WHATSAPP_ENABLED=true en .env)
-selenium==4.27.1                   # Control del navegador Chrome
-webdriver-manager==4.0.2           # Descarga automática del ChromeDriver
-
-
-# ----------------------------------------------------------
-# UTILIDADES DEL SERVIDOR
-# ----------------------------------------------------------
-python-dotenv==1.0.1               # Lectura de archivos .env
-aiofiles==24.1.0                   # Operaciones de archivos async (para endpoints de upload)
-
-# ----------------------------------------------------------
-# COMPATIBILIDAD PYTHON 3.12+ (REQUERIDO)
-# ----------------------------------------------------------
-setuptools==69.5.1                # Trae de vuelta pkg_resources para face_recognition
-
-# ----------------------------------------------------------
-# TESTING
-# ----------------------------------------------------------
-pytest==8.3.4
-pytest-asyncio==0.24.0             # Soporte de tests async con pytest
-
-
-# ----------------------------------------------------------
-# TAREAS AUTOMÁTICAS (Scheduler)
-# ----------------------------------------------------------
-apscheduler==3.10.4                # Scheduler async integrado con FastAPI
-pytz==2024.2                       # Zonas horarias para APScheduler (America/Lima, etc.)
-
-# ----------------------------------------------------------
-# EXPORTACIÓN DE REPORTES
-# ----------------------------------------------------------
-openpyxl==3.1.5                    # Generación de archivos Excel (.xlsx)
-reportlab==4.2.5                   # Generación de PDFs
-
-# ----------------------------------------------------------
-# PANEL ADMIN WEB (servir archivos estáticos)
-# ----------------------------------------------------------
-# aiofiles ya incluido arriba — FastAPI StaticFiles lo usa automáticamente
-
-# WebSocket client (para ws_client.py en el cliente de portería)
-websocket-client==1.8.0
-
-
+# --- COMPATIBILIDAD ---
+setuptools==69.0.3
