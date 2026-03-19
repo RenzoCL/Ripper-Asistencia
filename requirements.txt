@@ -1,38 +1,18 @@
-# --- CORE API ---
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
-
-# --- BASE DE DATOS (Supabase + Local) ---
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
 python-dotenv==1.0.0
-
-# --- VALIDACIÓN (Versiones estables para evitar error de pydantic-core) ---
 pydantic==2.5.3
 pydantic-settings==2.1.0
 email-validator==2.1.0.post1
-
-# --- SEGURIDAD ---
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-
-# --- RECONOCIMIENTO FACIAL ---
-# Usamos la versión "headless" de OpenCV para que pese menos y no pida librerías de monitor
-opencv-python-headless==4.8.1.78
-numpy==1.26.4
-Pillow==10.2.0
-face-recognition==1.3.0
-
-# --- NOTIFICACIONES Y UTILIDADES ---
 httpx==0.25.2
 aiofiles==23.2.1
 pytz==2023.3.post1
-
-# --- REPORTES ---
 openpyxl==3.1.2
 reportlab==4.0.9
-
-# --- COMPATIBILIDAD ---
 setuptools==69.0.3
