@@ -1,0 +1,71 @@
+# ============================================================
+# .gitignore — Colegio Asistencia (Reconocimiento Facial)
+# CRÍTICO: Nunca subir datos sensibles de alumnos al repo.
+# ============================================================
+
+# --- DATOS SENSIBLES (Nunca al repositorio) ---
+data/                       # Carpeta raíz de datos en producción
+*.db                        # Base de datos SQLite (contiene registros)
+*.sqlite                    # Alternativas de SQLite
+*.sqlite3
+
+# Fotos de alumnos y encodings entrenados
+server/data/
+server/photos/
+server/encodings/
+*.pkl                       # Archivos de encodings serializados
+
+# Variables de entorno (tokens, claves)
+.env
+.env.*
+!.env.example               # El ejemplo SÍ se sube como referencia
+
+# --- PYTHON ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# --- TESTING & COBERTURA ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- LOGS ---
+logs/
+*.log
+
+# --- MODELOS CNN (muy pesados) ---
+# Se descargan con el script setup/download_models.py
+models/
+*.dat
+shape_predictor_*.dat
+dlib_face_recognition_*.dat
+
+# --- NODE (si se agrega frontend web en el futuro) ---
+node_modules/

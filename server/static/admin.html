@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏫 Colegio Asistencia — Panel Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a; --bg2: #1e293b; --bg3: #334155;
+    --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+    --blue: #3b82f6; --blue2: #1d4ed8; --green: #22c55e;
+    --red: #ef4444; --yellow: #eab308; --purple: #a855f7;
+    --border: #334155; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LAYOUT */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; }
+  .main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; }
+  .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  .content { padding: 24px; flex: 1; }
+
+  /* SIDEBAR */
+  .logo { padding: 20px 16px 12px; font-size: 15px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .nav-section { padding: 8px 8px 4px; font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-top: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 6px; margin: 1px 8px; cursor: pointer; font-size: 13.5px; color: var(--text2); transition: all .15s; border: none; background: none; width: calc(100% - 16px); text-align: left; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--blue); color: #fff; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .badge { background: var(--red); color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 10px; margin-left: auto; }
+
+  /* TOPBAR */
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 32px; height: 32px; background: var(--blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card-title { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .card-value { font-size: 32px; font-weight: 700; line-height: 1; }
+  .card-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* GRID */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  tr:hover td { background: var(--bg3); }
+  .badge-status { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-ok  { background: #14532d; color: #86efac; }
+  .badge-warn{ background: #713f12; color: #fde047; }
+  .badge-err { background: #7f1d1d; color: #fca5a5; }
+  .badge-info{ background: #1e3a5f; color: #93c5fd; }
+
+  /* BUTTONS */
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--blue2); }
+  .btn-success { background: #15803d; color: #fff; }
+  .btn-success:hover { background: #166534; }
+  .btn-danger { background: #b91c1c; color: #fff; }
+  .btn-danger:hover { background: #991b1b; }
+  .btn-ghost { background: var(--bg3); color: var(--text); }
+  .btn-ghost:hover { background: var(--border); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* FORM */
+  input, select, textarea { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px 12px; font-size: 13px; width: 100%; outline: none; }
+  input:focus, select:focus { border-color: var(--blue); }
+  label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; }
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* MODEL SELECTOR */
+  .model-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all .2s; }
+  .model-card.active { border-color: var(--blue); background: rgba(59,130,246,.1); }
+  .model-card:hover { border-color: var(--blue); }
+  .model-title { font-weight: 700; font-size: 15px; }
+  .model-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+  .model-ligero { background: #14532d; color: #86efac; }
+  .model-default { background: var(--blue2); color: #bfdbfe; }
+  .model-potente { background: #581c87; color: #d8b4fe; }
+
+  /* MISC */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 18px; font-weight: 700; }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-yellow { color: var(--yellow); }
+  .text-blue { color: var(--blue); }
+  .text-muted { color: var(--text2); }
+  .mt-16 { margin-top: 16px; }
+  .mb-16 { margin-bottom: 16px; }
+  .flex { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  .chip { padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .chip-green { background:#14532d; color:#86efac; }
+  .chip-red   { background:#7f1d1d; color:#fca5a5; }
+  .chip-yellow{ background:#713f12; color:#fde047; }
+  .chip-blue  { background:#1e3a5f; color:#93c5fd; }
+
+  /* ALERT */
+  .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+  .alert-success { background: #14532d; color: #86efac; }
+  .alert-error { background: #7f1d1d; color: #fca5a5; }
+  .alert-info { background: #1e3a5f; color: #93c5fd; }
+
+  /* LOGIN */
+  .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .login-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; }
+  .login-logo { font-size: 40px; text-align: center; margin-bottom: 8px; }
+  .login-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .login-sub { color: var(--text2); font-size: 13px; text-align: center; margin-bottom: 24px; }
+  .login-error { background: #7f1d1d; color: #fca5a5; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; display: none; }
+
+  /* CHART container */
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Estilos para el Switch de Red */
+  #networkSwitch:checked + #switch-bg {
+    background: var(--blue) !important;
+  }
+  #networkSwitch:checked + #switch-bg #switch-circle {
+    transform: translateX(16px);
+  }
+  .sidebar .nav-section {
+    margin-top: 15px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🏫</div>
+    <div class="login-title">Colegio Asistencia</div>
+    <div class="login-sub">Panel de Administración</div>
+    <div class="login-error" id="loginError"></div>
+    <div class="form-group"><label>Usuario</label><input type="text" id="loginUser" placeholder="admin" autocomplete="username"></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()">Ingresar →</button>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);text-align:center" id="loginStatus">Verificando conexión...</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="layout" id="appLayout" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">🏫 <span>Admin Panel</span></div>
+    
+    <div style="flex:1; overflow-y:auto; padding-bottom:12px">
+      <div class="nav-section">Principal</div>
+      <button class="nav-item active" onclick="showView('dashboard')"><span class="nav-icon">📊</span>Dashboard</button>
+      <button class="nav-item" onclick="showView('asistencia')"><span class="nav-icon">📋</span>Asistencia Hoy</button>
+      <button class="nav-item" onclick="showView('ausentes')"><span class="nav-icon">🚨</span>Ausentes <span class="badge" id="badgeAusentes">0</span></button>
+      
+      <div class="nav-section">Gestión</div>
+      <button class="nav-item" onclick="showView('alumnos')"><span class="nav-icon">👥</span>Alumnos</button>
+      <button class="nav-item" onclick="showView('usuarios')"><span class="nav-icon">👤</span>Usuarios</button>
+      <button class="nav-item" onclick="showView('justificaciones')"><span class="nav-icon">📄</span>Justificaciones</button>
+      
+      <div class="nav-section">Reportes</div>
+      <button class="nav-item" onclick="showView('reportes')"><span class="nav-icon">📈</span>Reportes</button>
+      <button class="nav-item" onclick="showView('exportar')"><span class="nav-icon">⬇️</span>Exportar</button>
+      
+      <div class="nav-section">Sistema</div>
+      <button class="nav-item" onclick="showView('configuracion')"><span class="nav-icon">⚙️</span>Configuración</button>
+      <button class="nav-item" onclick="showView('notificaciones')"><span class="nav-icon">🔔</span>Notificaciones</button>
+    </div>
+
+    <div style="padding: 12px 16px; border-top: 1px solid var(--border); background: rgba(0,0,0,0.1);">
+      <div class="nav-section" style="margin: 0 0 8px 0; padding: 0;">Red Híbrida</div>
+      <label style="display: flex; align-items: center; cursor: pointer; justify-content: space-between; background: var(--bg3); padding: 8px 12px; border-radius: 8px;">
+        <span id="networkLabel" style="font-size: 11px; font-weight: bold; color: var(--green);">LOCAL</span>
+        <div style="position: relative;">
+          <input type="checkbox" id="networkSwitch" onchange="toggleNetwork()" style="display: none;">
+          <div id="switch-bg" style="width: 34px; height: 18px; background: #475569; border-radius: 20px; transition: 0.3s;">
+            <div id="switch-circle" style="width: 14px; height: 14px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.3s;"></div>
+          </div>
+        </div>
+      </label>
+      <p id="netInfo" style="font-size: 9px; color: var(--text3); margin-top: 6px; line-height: 1.2;">Usando servidor en tu PC</p>
+    </div>
+
+    <div style="padding:12px 16px; border-top:1px solid var(--border)">
+      <div style="font-size:12px; color:var(--text2)" id="sidebarUser">—</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px; width:100%; justify-content:center" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </aside>
+  
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-right">
+        <span class="status-dot" id="statusDot"></span>
+        <span style="font-size:12px;color:var(--text2)" id="statusText">Conectado</span>
+        <div class="avatar" id="avatarInitial">A</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════════════════════════════════════ DASHBOARD ══ -->
+      <div class="view active" id="view-dashboard">
+        <div class="section-header">
+          <div class="section-title">Dashboard</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Actualizar</button>
+        </div>
+        <div class="grid-4">
+          <div class="card"><div class="card-title">Presentes hoy</div><div class="card-value text-green" id="statPresentes">—</div><div class="card-sub" id="statPct">—</div></div>
+          <div class="card"><div class="card-title">Ausentes</div><div class="card-value text-red" id="statAusentes">—</div><div class="card-sub">sin justificar</div></div>
+          <div class="card"><div class="card-title">Tardanzas</div><div class="card-value text-yellow" id="statTardanzas">—</div><div class="card-sub">hoy</div></div>
+          <div class="card"><div class="card-title">Total alumnos</div><div class="card-value text-blue" id="statTotal">—</div><div class="card-sub">activos</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-title" style="margin-bottom:12px">Entradas recientes</div><div class="table-wrap"><table id="tablaRecientes"><tr><td style="color:var(--text3)">Cargando...</td></tr></table></div></div>
+          <div class="card"><div class="card-title" style="margin-bottom:12px">Asistencia del día</div><div class="chart-wrap"><canvas id="chartDonut"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">Tendencia semanal</div>
+          <div class="chart-wrap" style="height:180px"><canvas id="chartLinea"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ ASISTENCIA HOY ══ -->
+      <div class="view" id="view-asistencia">
+        <div class="section-header">
+          <div class="section-title">Asistencia de hoy</div>
+          <div class="flex">
+            <select id="filtroTipo" onchange="loadAsistenciaHoy()" style="width:140px">
+              <option value="">Todos</option>
+              <option value="ENTRADA">Solo Entradas</option>
+              <option value="SALIDA">Solo Salidas</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="loadAsistenciaHoy()">↻</button>
+          </div>
+        </div>
+        <div class="card"><div class="table-wrap"><table id="tablaAsistenciaHoy">
+          <thead><tr><th>Hora</th><th>Alumno</th><th>Grado</th><th>Tipo</th><th>Estado</th><th>Confianza</th><th>Por</th></tr></thead>
+          <tbody id="bodyAsistenciaHoy"><tr><td colspan="7" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ AUSENTES ══ -->
+      <div class="view" id="view-ausentes">
+        <div class="section-header">
+          <div class="section-title">Ausentes hoy</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadAusentes()">↻ Actualizar</button>
+        </div>
+        <div id="alertAusentes"></div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>N°</th><th>Alumno</th><th>Grado</th><th>Acción</th></tr></thead>
+          <tbody id="bodyAusentes"><tr><td colspan="4" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ ALUMNOS ══ -->
+      <div class="view" id="view-alumnos">
+        <div class="section-header">
+          <div class="section-title">Gestión de Alumnos</div>
+          <button class="btn btn-primary btn-sm" onclick="showModal('modalAlumno')">+ Nuevo alumno</button>
+        </div>
+        <div class="card mb-16">
+          <div class="flex" style="flex-wrap:wrap;gap:8px;align-items:center">
+            <input type="text" id="buscarAlumno" placeholder="Buscar por nombre o código..." style="max-width:280px" oninput="searchAlumnos()">
+            <select id="filtroGradoAlumno" onchange="searchAlumnos()" style="width:110px">
+              <option value="">Todos los grados</option>
+            </select>
+            <div style="flex:1"></div>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Subir ZIP con carpetas por código de alumno">
+              📦 Subir fotos ZIP
+              <input type="file" accept=".zip" id="zipFotos" style="display:none" onchange="subirZipFotos(this)">
+            </label>
+          </div>
+        </div>
+        <div id="zipResultado" style="display:none" class="mb-16"></div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Código</th><th>Alumno</th><th>Grado</th><th>Turno</th><th>Encoding</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="bodyAlumnos"><tr><td colspan="7" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ USUARIOS ══ -->
+      <div class="view" id="view-usuarios">
+        <div class="section-header">
+          <div class="section-title">Usuarios del sistema</div>
+          <button class="btn btn-primary btn-sm" onclick="showModal('modalUsuario')">+ Nuevo usuario</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Grado</th><th>Último login</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="bodyUsuarios"><tr><td colspan="7" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ JUSTIFICACIONES ══ -->
+      <div class="view" id="view-justificaciones">
+        <div class="section-header">
+          <div class="section-title">Justificaciones</div>
+          <button class="btn btn-primary btn-sm" onclick="showModal('modalJustificacion')">+ Nueva justificación</button>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Alumno</th><th>Fecha ausencia</th><th>Motivo</th><th>Registrado por</th><th>Acciones</th></tr></thead>
+          <tbody id="bodyJustificaciones"><tr><td colspan="5" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ REPORTES ══ -->
+      <div class="view" id="view-reportes">
+        <div class="section-header">
+          <div class="section-title">Reportes</div>
+          <div class="flex">
+            <select id="reporteMes" style="width:120px">
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+            <select id="reporteAnio" style="width:90px"></select>
+            <button class="btn btn-primary btn-sm" onclick="loadReporteMensual()">Ver reporte</button>
+          </div>
+        </div>
+        <div id="reporteMensualContent">
+          <div class="card"><p style="color:var(--text2);font-size:13px">Seleccionar mes y año para ver el reporte.</p></div>
+        </div>
+        <div class="mt-16 section-header">
+          <div class="section-title" style="font-size:15px">Top ausencias del mes</div>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Alumno</th><th>Grado</th><th>Días ausente</th><th>% Asistencia</th></tr></thead>
+          <tbody id="bodyTopAusencias"><tr><td colspan="4" style="color:var(--text3)">Seleccionar mes para ver datos.</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- ══════════════════════════════════════ EXPORTAR ══ -->
+      <div class="view" id="view-exportar">
+        <div class="section-title mb-16">Exportar Reportes</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+          <div class="card">
+            <div class="card-title">📊 Asistencia Mensual</div>
+            <p style="font-size:13px;color:var(--text2);margin:8px 0 16px">Excel con todos los alumnos y sus asistencias día a día, codificado por colores.</p>
+            <div class="flex" style="margin-bottom:12px">
+              <select id="expMes" style="flex:1">
+                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+              </select>
+              <select id="expAnio" style="width:90px"></select>
+            </div>
+            <button class="btn btn-success" style="width:100%;justify-content:center" onclick="exportarExcelMensual()">⬇ Descargar Excel</button>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 Reporte Diario PDF</div>
+            <p style="font-size:13px;color:var(--text2);margin:8px 0 16px">PDF con lista de presentes y ausentes del día. Listo para imprimir.</p>
+            <div class="form-group"><label>Fecha</label><input type="date" id="expFechaPDF"></div>
+            <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="exportarPDFDiario()">⬇ Descargar PDF</button>
+          </div>
+          <div class="card">
+            <div class="card-title">👤 Historial de Alumno — Excel</div>
+            <p style="font-size:13px;color:var(--text2);margin:8px 0 16px">Excel con el historial completo de asistencia de un alumno específico.</p>
+            <div class="form-group"><label>ID del alumno</label><input type="number" id="expAlumnoId" placeholder="Ej: 42"></div>
+            <div class="form-group"><label>Últimos días</label><input type="number" id="expDias" value="30" min="7" max="365"></div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportarExcelAlumno()">⬇ Descargar Excel</button>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 Reporte Individual PDF</div>
+            <p style="font-size:13px;color:var(--text2);margin:8px 0 16px">PDF profesional con estadísticas y tabla de registros. Ideal para reuniones con padres.</p>
+            <div class="form-group"><label>ID del alumno</label><input type="number" id="expAlumnoPdfId" placeholder="Ej: 42"></div>
+            <div class="form-group"><label>Últimos días</label><input type="number" id="expDiasPdf" value="30" min="7" max="180"></div>
+            <button class="btn btn-danger" style="width:100%;justify-content:center" onclick="exportarPDFAlumno()">⬇ Descargar PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ CONFIGURACIÓN ══ -->
+      <div class="view" id="view-configuracion">
+        <div class="section-title mb-16">Configuración del sistema</div>
+
+        <!-- SELECTOR DE MODELO IA -->
+        <div class="card mb-16">
+          <div class="card-title" style="margin-bottom:14px">🤖 Modelo de Reconocimiento Facial</div>
+          <div class="grid-3" id="modelSelector">
+            <div class="model-card" id="modelLBPH" onclick="cambiarModelo('LBPH')">
+              <div class="flex" style="margin-bottom:8px"><span class="model-title">LBPH</span><span class="chip chip-green model-badge model-ligero">Nivel 1</span></div>
+              <div style="font-size:12px;color:var(--text2)">OpenCV puro. Ultra ligero.<br>PCs con más de 10 años.</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">~50ms · &lt;100 MB RAM</div>
+            </div>
+            <div class="model-card" id="modelHOG" onclick="cambiarModelo('HOG')">
+              <div class="flex" style="margin-bottom:8px"><span class="model-title">HOG</span><span class="chip chip-blue model-badge model-default">Nivel 2 ★ Default</span></div>
+              <div style="font-size:12px;color:var(--text2)">dlib HOG. Balanceado.<br>PCs modernas sin GPU.</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">~200ms · ~200 MB RAM</div>
+            </div>
+            <div class="model-card" id="modelCNN" onclick="cambiarModelo('CNN')">
+              <div class="flex" style="margin-bottom:8px"><span class="model-title">CNN</span><span class="chip model-badge model-potente" style="background:#3b0764;color:#e9d5ff">Nivel 3</span></div>
+              <div style="font-size:12px;color:var(--text2)">dlib CNN. Alta precisión.<br>Requiere GPU NVIDIA.</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">~30ms con GPU · +500MB</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARÁMETROS -->
+        <div class="card mb-16">
+          <div class="card-title" style="margin-bottom:14px">⏰ Horarios y Parámetros</div>
+          <div id="configParams"><div style="color:var(--text3);font-size:13px">Cargando...</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">🔧 Acciones del Sistema</div>
+          <div class="flex" style="flex-wrap:wrap;gap:10px">
+            <button class="btn btn-ghost" onclick="triggerBackup()">💾 Hacer backup ahora</button>
+            <button class="btn btn-ghost" onclick="testNotificacion()">🔔 Probar Telegram</button>
+            <a class="btn btn-ghost" href="/docs" target="_blank">📖 Documentación API</a>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--text3)">Los backups automáticos se ejecutan a las 20:00 diariamente. Las notificaciones de ausencia se envían a las 09:30.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════ NOTIFICACIONES ══ -->
+      <div class="view" id="view-notificaciones">
+        <div class="section-header">
+          <div class="section-title">Historial de Notificaciones</div>
+          <div class="flex">
+            <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="filtroSoloErrores" onchange="loadLogs()"> Solo errores
+            </label>
+            <button class="btn btn-ghost btn-sm" onclick="loadLogs()">↻</button>
+          </div>
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Canal</th><th>Alumno ID</th><th>Estado</th><th>Error</th></tr></thead>
+          <tbody id="bodyLogs"><tr><td colspan="5" style="color:var(--text3)">Cargando...</td></tr></tbody>
+        </table></div></div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ══════════════════════════════════════════════════════ MODALS ══ -->
+
+<!-- MODAL ALUMNO -->
+<div id="modalAlumno" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:480px;max-width:95vw">
+    <div class="flex mb-16"><div style="font-weight:700;font-size:16px">Nuevo alumno</div><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="hideModal('modalAlumno')">✕</button></div>
+    <div id="alertModalAlumno"></div>
+    <div class="form-row"><div class="form-group"><label>Código</label><input id="aluCodigo" placeholder="Ej: 2024001"></div><div class="form-group"><label>Turno</label><select id="aluTurno"><option>MAÑANA</option><option>TARDE</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Nombres</label><input id="aluNombres" placeholder="Juan Carlos"></div><div class="form-group"><label>Apellidos</label><input id="aluApellidos" placeholder="Pérez Gómez"></div></div>
+    <div class="form-row"><div class="form-group"><label>Grado</label><input id="aluGrado" placeholder="3"></div><div class="form-group"><label>Sección</label><input id="aluSeccion" placeholder="A"></div></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="crearAlumno()">Guardar alumno</button>
+  </div>
+</div>
+
+<!-- MODAL USUARIO -->
+<div id="modalUsuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:95vw">
+    <div class="flex mb-16"><div style="font-weight:700;font-size:16px">Nuevo usuario</div><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="hideModal('modalUsuario')">✕</button></div>
+    <div id="alertModalUsuario"></div>
+    <div class="form-group"><label>Usuario</label><input id="usrUsername" placeholder="portero1"></div>
+    <div class="form-group"><label>Nombre para mostrar</label><input id="usrNombre" placeholder="Juan Guarda"></div>
+    <div class="form-group"><label>Contraseña (mín. 8 caracteres)</label><input type="password" id="usrPass" placeholder="••••••••"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Rol</label><select id="usrRol"><option value="PORTERO">Portero</option><option value="TUTOR">Tutor</option><option value="ADMIN">Admin</option></select></div>
+      <div class="form-group"><label>Grado asignado (tutores)</label><input id="usrGrado" placeholder="3A"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="crearUsuario()">Crear usuario</button>
+  </div>
+</div>
+
+<!-- MODAL JUSTIFICACION -->
+<div id="modalJustificacion" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:95vw">
+    <div class="flex mb-16"><div style="font-weight:700;font-size:16px">Nueva justificación</div><div class="spacer"></div><button class="btn btn-ghost btn-sm" onclick="hideModal('modalJustificacion')">✕</button></div>
+    <div id="alertModalJust"></div>
+    <div class="form-group"><label>ID del alumno</label><input type="number" id="justAlumnoId" placeholder="Buscar por ID o nombre"></div>
+    <div class="form-group"><label>Fecha de ausencia</label><input type="date" id="justFecha"></div>
+    <div class="form-group"><label>Motivo</label><textarea id="justMotivo" rows="3" placeholder="Certificado médico, viaje familiar..."></textarea></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="crearJustificacion()">Guardar justificación</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════
+const API = window.location.origin;
+let TOKEN = localStorage.getItem('ca_token') || '';
+let USUARIO = JSON.parse(localStorage.getItem('ca_user') || 'null');
+
+// ══════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  try {
+    const opts = { method, headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    if (r.status === 401) { logout(); return null; }
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
+    return await r.json().catch(() => ({}));
+  } catch(e) { console.error(path, e.message); throw e; }
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const titles = { dashboard:'Dashboard', asistencia:'Asistencia Hoy', ausentes:'Ausentes Hoy', alumnos:'Alumnos', usuarios:'Usuarios', justificaciones:'Justificaciones', reportes:'Reportes', exportar:'Exportar', configuracion:'Configuración', notificaciones:'Notificaciones' };
+  document.getElementById('topbarTitle').textContent = titles[name] || name;
+  document.querySelectorAll('.nav-item').forEach(n => { if (n.textContent.trim().toLowerCase().includes(name.slice(0,5))) n.classList.add('active'); });
+
+  const loaders = { dashboard: loadDashboard, asistencia: loadAsistenciaHoy, ausentes: loadAusentes, alumnos: loadAlumnos, usuarios: loadUsuarios, justificaciones: loadJustificaciones, configuracion: loadConfiguracion, notificaciones: loadLogs };
+  if (loaders[name]) loaders[name]();
+}
+
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+
+function chip(text, type) { return `<span class="chip chip-${type}">${text}</span>`; }
+
+function fmtFecha(s) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return d.toLocaleDateString('es-PE') + ' ' + d.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+}
+
+function alertDiv(msg, type='success') {
+  return `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════════
+window.onload = async () => {
+  // Inicializar selectors de año
+  const anio = new Date().getFullYear();
+  ['reporteAnio','expAnio'].forEach(id => {
+    const s = document.getElementById(id);
+    if (s) for (let y = anio; y >= anio - 3; y--) s.innerHTML += `<option>${y}</option>`;
+  });
+  // Mes actual en exportar
+  const mesActual = new Date().getMonth() + 1;
+  ['expMes','reporteMes'].forEach(id => {
+    const s = document.getElementById(id);
+    if (s) s.value = mesActual;
+  });
+  // Fecha hoy en PDF
+  const hoy = new Date().toISOString().split('T')[0];
+  const fp = document.getElementById('expFechaPDF');
+  if (fp) fp.value = hoy;
+
+  // Verificar server
+  try {
+    const r = await fetch(API + '/health');
+    document.getElementById('loginStatus').textContent = r.ok ? '🟢 Servidor conectado' : '🔴 Servidor no responde';
+  } catch { document.getElementById('loginStatus').textContent = '🔴 Sin conexión'; }
+
+  if (TOKEN && USUARIO) initApp();
+};
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  if (!u || !p) return;
+  try {
+    const data = await api('POST', '/api/auth/login', { username: u, password: p });
+    if (!data) return;
+    TOKEN = data.access_token;
+    USUARIO = data.usuario;
+    localStorage.setItem('ca_token', TOKEN);
+    localStorage.setItem('ca_user', JSON.stringify(USUARIO));
+    initApp();
+  } catch(e) {
+    const err = document.getElementById('loginError');
+    err.textContent = '❌ ' + e.message;
+    err.style.display = 'block';
+  }
+}
+
+function initApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appLayout').style.display = 'flex';
+  document.getElementById('sidebarUser').textContent = `${USUARIO.nombre_display} · ${USUARIO.rol}`;
+  document.getElementById('avatarInitial').textContent = USUARIO.nombre_display?.[0] || 'A';
+  loadDashboard();
+  setInterval(checkStatus, 30000);
+}
+
+function logout() {
+  TOKEN = ''; USUARIO = null;
+  localStorage.removeItem('ca_token'); localStorage.removeItem('ca_user');
+  location.reload();
+}
+
+async function checkStatus() {
+  try {
+    const r = await fetch(API + '/health');
+    document.getElementById('statusDot').style.background = r.ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('statusText').textContent = r.ok ? 'Conectado' : 'Sin conexión';
+  } catch { document.getElementById('statusDot').style.background = 'var(--red)'; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+let chartDonut = null, chartLinea = null;
+
+async function loadDashboard() {
+  try {
+    const [rep, hoy] = await Promise.all([
+      api('GET', '/api/admin/reportes/diario'),
+      api('GET', '/api/asistencia/hoy?'),
+    ]);
+    if (!rep) return;
+
+    document.getElementById('statPresentes').textContent = rep.presentes;
+    document.getElementById('statAusentes').textContent  = rep.ausentes;
+    document.getElementById('statTardanzas').textContent = rep.tardanzas;
+    document.getElementById('statTotal').textContent     = rep.total_alumnos;
+    document.getElementById('statPct').textContent       = `${rep.porcentaje_asistencia}% de asistencia`;
+    document.getElementById('badgeAusentes').textContent = rep.ausentes;
+
+    // Tabla recientes
+    const recientes = (hoy || []).filter(r => r.tipo_evento === 'ENTRADA').slice(0, 8);
+    document.getElementById('tablaRecientes').innerHTML = recientes.length
+      ? recientes.map(r => `<tr><td>${r.hora}</td><td>${r.nombre}</td><td>${r.grado}</td><td>${r.estado === 'TARDANZA' ? chip('Tardanza','yellow') : chip('Puntual','green')}</td></tr>`).join('')
+      : '<tr><td colspan="4" style="color:var(--text3)">Sin entradas hoy</td></tr>';
+
+    // Donut chart
+    const ctx1 = document.getElementById('chartDonut').getContext('2d');
+    if (chartDonut) chartDonut.destroy();
+    chartDonut = new Chart(ctx1, {
+      type: 'doughnut',
+      data: { labels: ['Presentes', 'Ausentes', 'Tardanzas'],
+              datasets: [{ data: [rep.presentes - rep.tardanzas, rep.ausentes, rep.tardanzas],
+                           backgroundColor: ['#22c55e','#ef4444','#eab308'], borderWidth: 0 }] },
+      options: { plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 12 } } } }, cutout: '65%' }
+    });
+
+    // Línea semanal (mock data — en producción llamar endpoint de semana)
+    const ctx2 = document.getElementById('chartLinea').getContext('2d');
+    if (chartLinea) chartLinea.destroy();
+    const dias = ['Lun','Mar','Mié','Jue','Vie'];
+    const total = rep.total_alumnos;
+    const mockData = dias.map(() => Math.floor(total * (0.82 + Math.random() * 0.12)));
+    mockData[mockData.length - 1] = rep.presentes;
+    chartLinea = new Chart(ctx2, {
+      type: 'line',
+      data: { labels: dias, datasets: [{ label: 'Asistencia', data: mockData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.1)', tension: 0.4, fill: true, pointBackgroundColor: '#3b82f6' }] },
+      options: { scales: { x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' }, min: 0 } }, plugins: { legend: { display: false } } }
+    });
+  } catch(e) { console.error('Dashboard error:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ASISTENCIA HOY
+// ══════════════════════════════════════════════════════════════════
+async function loadAsistenciaHoy() {
+  const tipo = document.getElementById('filtroTipo').value;
+  const data = await api('GET', `/api/asistencia/hoy${tipo ? '?tipo=' + tipo : ''}`);
+  const tbody = document.getElementById('bodyAsistenciaHoy');
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text3)">Sin registros</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${r.hora}</td><td>${r.nombre}</td><td>${r.grado}</td>
+      <td>${r.tipo_evento === 'ENTRADA' ? chip('ENTRADA','green') : chip('SALIDA','blue')}</td>
+      <td>${r.estado === 'TARDANZA' ? chip('Tardanza','yellow') : r.estado === 'PRESENTE' ? chip('Puntual','green') : chip(r.estado,'info')}</td>
+      <td>${r.confianza ? (r.confianza * 100).toFixed(0) + '%' : 'Manual'}</td>
+      <td>${r.registrado_por}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AUSENTES
+// ══════════════════════════════════════════════════════════════════
+async function loadAusentes() {
+  const data = await api('GET', '/api/admin/reportes/ausentes-hoy');
+  const tbody = document.getElementById('bodyAusentes');
+  const alert = document.getElementById('alertAusentes');
+  if (!data) return;
+  alert.innerHTML = alertDiv(`📋 Total ausentes hoy: <b>${data.total_ausentes}</b>`, 'info');
+  if (!data.ausentes.length) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3)">¡Sin ausentes hoy!</td></tr>'; return; }
+  tbody.innerHTML = data.ausentes.map((a, i) => `
+    <tr><td>${i+1}</td><td>${a.nombre}</td><td>${a.grado}${a.seccion||''}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="regManual(${a.id}, '${a.nombre}')">Registrar entrada</button></td></tr>`).join('');
+}
+
+async function regManual(alumnoId, nombre) {
+  if (!confirm(`¿Registrar ENTRADA manual para ${nombre}?`)) return;
+  try {
+    await api('POST', '/api/asistencia/manual', { alumno_id: alumnoId, tipo_evento: 'ENTRADA', notas: 'Entrada manual desde Panel Admin' });
+    alert('✅ Entrada registrada para ' + nombre);
+    loadAusentes();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ALUMNOS
+// ══════════════════════════════════════════════════════════════════
+let todosAlumnos = [];
+async function loadAlumnos() {
+  const data = await api('GET', '/api/alumnos/?limit=200');
+  todosAlumnos = data || [];
+  renderAlumnos(todosAlumnos);
+
+  // Poblar filtro de grados
+  const grados = [...new Set(todosAlumnos.map(a => a.grado + a.seccion))].sort();
+  const sel = document.getElementById('filtroGradoAlumno');
+  sel.innerHTML = '<option value="">Todos los grados</option>' + grados.map(g => `<option>${g}</option>`).join('');
+}
+
+function renderAlumnos(lista) {
+  const tbody = document.getElementById('bodyAlumnos');
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text3)">Sin resultados</td></tr>'; return; }
+  tbody.innerHTML = lista.map(a => `
+    <tr>
+      <td><code style="color:var(--blue)">${a.codigo}</code></td>
+      <td>${a.apellidos}, ${a.nombres}</td>
+      <td>${a.grado}${a.seccion}</td>
+      <td>${a.turno}</td>
+      <td>${a.encoding_valido ? chip('✓ Entrenado','green') : chip('Sin encoding','red')}</td>
+      <td>${a.activo ? chip('Activo','green') : chip('Inactivo','red')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="verHistorial(${a.id},'${a.apellidos}')">Historial</button></td>
+    </tr>`).join('');
+}
+
+function searchAlumnos() {
+  const q = document.getElementById('buscarAlumno').value.toLowerCase();
+  const g = document.getElementById('filtroGradoAlumno').value;
+  const filtrado = todosAlumnos.filter(a =>
+    (!q || (a.nombres + ' ' + a.apellidos + ' ' + a.codigo).toLowerCase().includes(q)) &&
+    (!g || (a.grado + a.seccion) === g)
+  );
+  renderAlumnos(filtrado);
+}
+
+async function crearAlumno() {
+  const alert = document.getElementById('alertModalAlumno');
+  try {
+    await api('POST', '/api/alumnos/', {
+      codigo: document.getElementById('aluCodigo').value,
+      nombres: document.getElementById('aluNombres').value,
+      apellidos: document.getElementById('aluApellidos').value,
+      grado: document.getElementById('aluGrado').value,
+      seccion: document.getElementById('aluSeccion').value,
+      turno: document.getElementById('aluTurno').value,
+    });
+    alert.innerHTML = alertDiv('✅ Alumno creado exitosamente');
+    loadAlumnos();
+    setTimeout(() => hideModal('modalAlumno'), 1500);
+  } catch(e) { alert.innerHTML = alertDiv('❌ ' + e.message, 'error'); }
+}
+
+async function verHistorial(id, nombre) {
+  const data = await api('GET', `/api/admin/reportes/historial/${id}?dias=30`);
+  if (!data) return;
+  const info = data.registros.slice(0,5).map(r => `${r.fecha.split('T')[0]} ${r.tipo} (${r.estado})`).join('\n');
+  alert(`Historial de ${nombre} (últimos 30 días):\nTotal: ${data.total_registros} registros\n\n${info}`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// USUARIOS
+// ══════════════════════════════════════════════════════════════════
+async function loadUsuarios() {
+  const data = await api('GET', '/api/admin/usuarios');
+  const tbody = document.getElementById('bodyUsuarios');
+  if (!data) return;
+  const rolChip = { ADMIN: 'red', TUTOR: 'blue', PORTERO: 'green' };
+  tbody.innerHTML = data.map(u => `
+    <tr>
+      <td><code>${u.username}</code></td>
+      <td>${u.nombre_display}</td>
+      <td>${chip(u.rol, rolChip[u.rol] || 'info')}</td>
+      <td>${u.grado_asignado || '—'}</td>
+      <td>${u.ultimo_login ? fmtFecha(u.ultimo_login) : 'Nunca'}</td>
+      <td>${u.activo ? chip('Activo','green') : chip('Inactivo','red')}</td>
+      <td>${u.username !== 'admin' ? `<button class="btn btn-ghost btn-sm" onclick="desactivarUser(${u.id},'${u.username}')">Desactivar</button>` : '—'}</td>
+    </tr>`).join('');
+}
+
+async function crearUsuario() {
+  const alert = document.getElementById('alertModalUsuario');
+  try {
+    await api('POST', '/api/admin/usuarios', {
+      username: document.getElementById('usrUsername').value,
+      password: document.getElementById('usrPass').value,
+      nombre_display: document.getElementById('usrNombre').value,
+      rol: document.getElementById('usrRol').value,
+      grado_asignado: document.getElementById('usrGrado').value || null,
+    });
+    alert.innerHTML = alertDiv('✅ Usuario creado');
+    loadUsuarios();
+    setTimeout(() => hideModal('modalUsuario'), 1500);
+  } catch(e) { alert.innerHTML = alertDiv('❌ ' + e.message, 'error'); }
+}
+
+async function desactivarUser(id, username) {
+  if (!confirm(`¿Desactivar al usuario "${username}"?`)) return;
+  await api('PATCH', `/api/admin/usuarios/${id}/desactivar`);
+  loadUsuarios();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// JUSTIFICACIONES
+// ══════════════════════════════════════════════════════════════════
+async function loadJustificaciones() {
+  const data = await api('GET', '/api/justificaciones/');
+  const tbody = document.getElementById('bodyJustificaciones');
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3)">Sin justificaciones</td></tr>'; return; }
+  tbody.innerHTML = data.map(j => `
+    <tr>
+      <td>Alumno #${j.alumno_id}</td>
+      <td>${j.fecha_ausencia?.split('T')[0] || '—'}</td>
+      <td>${j.motivo}</td>
+      <td>${j.fecha_registro?.split('T')[0] || '—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarJust(${j.id})">Eliminar</button></td>
+    </tr>`).join('');
+}
+
+async function crearJustificacion() {
+  const alert = document.getElementById('alertModalJust');
+  try {
+    await api('POST', '/api/justificaciones/', {
+      alumno_id: parseInt(document.getElementById('justAlumnoId').value),
+      fecha_ausencia: document.getElementById('justFecha').value + 'T00:00:00',
+      motivo: document.getElementById('justMotivo').value,
+    });
+    alert.innerHTML = alertDiv('✅ Justificación guardada');
+    loadJustificaciones();
+    setTimeout(() => hideModal('modalJustificacion'), 1500);
+  } catch(e) { alert.innerHTML = alertDiv('❌ ' + e.message, 'error'); }
+}
+
+async function eliminarJust(id) {
+  if (!confirm('¿Eliminar esta justificación?')) return;
+  await api('DELETE', `/api/justificaciones/${id}`);
+  loadJustificaciones();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════════════════════════════
+async function loadReporteMensual() {
+  const mes  = document.getElementById('reporteMes').value;
+  const anio = document.getElementById('reporteAnio').value;
+  const data = await api('GET', `/api/admin/reportes/mensual?año=${anio}&mes=${mes}`);
+  if (!data) return;
+
+  document.getElementById('reporteMensualContent').innerHTML = `
+    <div class="grid-4">
+      <div class="card"><div class="card-title">Días lectivos</div><div class="card-value text-blue">${data.dias_lectivos}</div></div>
+      <div class="card"><div class="card-title">Promedio diario</div><div class="card-value text-green">${data.promedio_diario_asistencia}</div></div>
+      <div class="card"><div class="card-title">Total alumnos</div><div class="card-value">${data.total_alumnos_activos}</div></div>
+      <div class="card"><div class="card-title">Con ausencias</div><div class="card-value text-red">${data.top_ausencias.length}</div></div>
+    </div>`;
+
+  document.getElementById('bodyTopAusencias').innerHTML = data.top_ausencias.length
+    ? data.top_ausencias.map((a, i) => `
+      <tr>
+        <td>${i+1}. ${a.alumno}</td><td>${a.grado}</td>
+        <td><span class="${a.dias_ausente > 3 ? 'text-red' : 'text-yellow'}">${a.dias_ausente} días</span></td>
+        <td><span class="${a.porcentaje_asistencia < 85 ? 'text-red' : 'text-yellow'}">${a.porcentaje_asistencia}%</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="color:var(--text3)">Sin ausencias registradas</td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EXPORTAR
+// ══════════════════════════════════════════════════════════════════
+function descargaDirecta(url) { window.open(url + `&_token=${TOKEN}`, '_blank'); }
+
+async function exportarExcelMensual() {
+  const mes  = document.getElementById('expMes').value;
+  const anio = document.getElementById('expAnio').value;
+  const url  = `/api/exportar/excel/mensual?año=${anio}&mes=${mes}`;
+  const resp = await fetch(API + url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!resp.ok) { alert('Error: openpyxl no instalado en el servidor. Ejecutar: pip install openpyxl'); return; }
+  const blob = await resp.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `asistencia_${anio}_${mes.padStart(2,'0')}.xlsx`; a.click();
+}
+
+async function exportarPDFDiario() {
+  const fecha = document.getElementById('expFechaPDF').value;
+  const resp = await fetch(API + `/api/exportar/pdf/diario?fecha=${fecha}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!resp.ok) { alert('Error: reportlab no instalado. Ejecutar: pip install reportlab'); return; }
+  const blob = await resp.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `reporte_${fecha}.pdf`; a.click();
+}
+
+async function exportarExcelAlumno() {
+  const id   = document.getElementById('expAlumnoId').value;
+  const dias = document.getElementById('expDias').value;
+  if (!id) { alert('Ingresa el ID del alumno'); return; }
+  const resp = await fetch(API + `/api/exportar/excel/alumno/${id}?dias=${dias}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!resp.ok) { alert('Error al exportar'); return; }
+  const blob = await resp.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `historial_alumno_${id}.xlsx`; a.click();
+}
+
+async function exportarPDFAlumno() {
+  const id   = document.getElementById('expAlumnoPdfId').value;
+  const dias = document.getElementById('expDiasPdf').value;
+  if (!id) { alert('Ingresa el ID del alumno'); return; }
+  const resp = await fetch(API + `/api/exportar/pdf/alumno/${id}?dias=${dias}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!resp.ok) { const e = await resp.json().catch(()=>{}); alert('Error: ' + (e?.detail || 'reportlab no instalado. pip install reportlab')); return; }
+  const blob = await resp.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `reporte_alumno_${id}.pdf`; a.click();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════════════════════════════════════════
+async function loadConfiguracion() {
+  const data = await api('GET', '/api/admin/config');
+  if (!data) return;
+
+  const modeloActivo = data.find(c => c.clave === 'modelo_ia_activo')?.valor || 'HOG';
+  ['LBPH','HOG','CNN'].forEach(m => {
+    document.getElementById('model' + m).classList.toggle('active', m === modeloActivo);
+  });
+
+  const editables = ['hora_inicio_tardanza','hora_inicio_clases','hora_fin_clases','nombre_colegio'];
+  const container = document.getElementById('configParams');
+  container.innerHTML = data
+    .filter(c => editables.includes(c.clave))
+    .map(c => `
+      <div class="flex mb-16">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${c.clave.replace(/_/g,' ')}</div>
+          <div style="font-size:11px;color:var(--text3)">${c.descripcion || ''}</div>
+        </div>
+        <input id="cfg_${c.clave}" value="${c.valor}" style="width:180px">
+        <button class="btn btn-ghost btn-sm" onclick="guardarConfig('${c.clave}')">Guardar</button>
+      </div>`).join('');
+
+  // Toggle notificaciones
+  const notif = data.find(c => c.clave === 'notificaciones_activas');
+  if (notif) {
+    container.innerHTML += `
+      <div class="flex">
+        <div style="flex:1"><div style="font-size:13px;font-weight:600">Notificaciones activas</div></div>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+          <input type="checkbox" id="cfg_notif" ${notif.valor === 'true' ? 'checked' : ''} onchange="guardarConfig('notificaciones_activas', this.checked ? 'true' : 'false')">
+          <span style="font-size:13px">${notif.valor === 'true' ? 'Habilitadas' : 'Deshabilitadas'}</span>
+        </label>
+      </div>`;
+  }
+}
+
+async function guardarConfig(clave, valor) {
+  const v = valor !== undefined ? valor : document.getElementById('cfg_' + clave)?.value;
+  try {
+    await api('PUT', `/api/admin/config/${clave}`, { valor: v });
+    alert('✅ Configuración guardada: ' + clave + ' = ' + v);
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function cambiarModelo(modelo) {
+  try {
+    await api('POST', `/api/reconocimiento/modelo/${modelo}`);
+    loadConfiguracion();
+  } catch(e) { alert('Error cambiando modelo: ' + e.message); }
+}
+
+async function triggerBackup() {
+  // Llama al endpoint de test para verificar conectividad mientras el backup corre en scheduler
+  alert('El backup automático se ejecuta a las 20:00.\nPara forzarlo ahora, ejecutar manualmente:\npython scripts/setup/backup_db.py');
+}
+
+async function testNotificacion() {
+  try {
+    const data = await api('POST', '/api/admin/notificaciones/test?mensaje=🧪 Prueba desde Panel Admin');
+    alert(data.enviado ? '✅ Mensaje enviado a Telegram correctamente' : '❌ Error enviando — verificar TELEGRAM_BOT_TOKEN en .env');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LOGS
+// ══════════════════════════════════════════════════════════════════
+async function loadLogs() {
+  const soloErr = document.getElementById('filtroSoloErrores').checked;
+  const data = await api('GET', `/api/admin/notificaciones/logs?limit=50&solo_errores=${soloErr}`);
+  const tbody = document.getElementById('bodyLogs');
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3)">Sin registros</td></tr>'; return; }
+  tbody.innerHTML = data.map(l => `
+    <tr>
+      <td>${fmtFecha(l.fecha)}</td>
+      <td>${chip(l.canal, 'info')}</td>
+      <td>${l.alumno_id || '—'}</td>
+      <td>${l.enviado ? chip('✓ Enviado','green') : chip('✗ Error','red')}</td>
+      <td style="font-size:11px;color:var(--text3)">${l.error || '—'}</td>
+    </tr>`).join('');
+}
+
+async function subirZipFotos(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const divRes = document.getElementById('zipResultado');
+  divRes.style.display='block';
+  divRes.innerHTML = alertDiv('⏳ Subiendo ZIP... puede tardar si hay muchas fotos.', 'info');
+
+  const form = new FormData();
+  form.append('archivo_zip', file);
+
+  try {
+    const resp = await fetch(API + '/api/alumnos/fotos-zip?entrenar=false', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` },
+      body: form,
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      divRes.innerHTML = alertDiv(
+        `✅ ${data.procesados} alumnos procesados. ` +
+        (data.omitidos > 0 ? `⚠️ ${data.omitidos} omitidos. ` : '') +
+        `Ahora ir a cada alumno para entrenar el encoding.`
+      );
+      loadAlumnos();
+    } else {
+      divRes.innerHTML = alertDiv('❌ ' + (data.detail || JSON.stringify(data)), 'error');
+    }
+  } catch(e) {
+    divRes.innerHTML = alertDiv('❌ Error: ' + e.message, 'error');
+  }
+  input.value = '';
+}
+
+// Close modals on outside click
+document.querySelectorAll('[id^="modal"]').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; });
+});
+
+// Enter key for login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') doLogin();
+});
+
+function toggleNetwork() {
+    const isCloud = document.getElementById('networkSwitch').checked;
+    const label = document.getElementById('networkLabel');
+    const info = document.getElementById('netInfo');
+    
+    // Cambiamos la URL base de las peticiones
+    if (isCloud) {
+        // MODO NUBE
+        API = "https://tu-app-en-render.onrender.com"; // <-- PON AQUÍ TU URL DE RENDER
+        label.innerText = "NUBE";
+        label.style.color = "var(--blue)";
+        info.innerText = "Sincronizado con internet";
+    } else {
+        // MODO LOCAL
+        API = "http://localhost:8000"; 
+        label.innerText = "LOCAL";
+        label.style.color = "var(--green)";
+        info.innerText = "Usando servidor en tu PC";
+    }
+    
+    console.log("Cambiando conexión a:", API);
+
+    // Intentamos refrescar los datos para ver si el nuevo servidor responde
+    if (typeof loadStats === 'function') loadStats();
+    if (typeof loadAlumnos === 'function') loadAlumnos();
+}
+</script>
+</body>
+</html>

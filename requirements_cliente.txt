@@ -1,0 +1,49 @@
+# =============================================================
+# requirements_cliente.txt — PCs Cliente (Portería / Aulas)
+# =============================================================
+# Instalar con:
+#   pip install -r requirements_cliente.txt
+#
+# Este archivo es MÁS LIVIANO que requirements.txt:
+# - NO incluye FastAPI ni el servidor
+# - NO incluye face_recognition ni dlib (el reconocimiento lo hace el servidor)
+# - Solo lo necesario para capturar la webcam y mostrar la UI
+#
+# Compatible con PCs básicas: 2GB RAM, CPU Dual-Core, Python 3.10+
+# =============================================================
+
+
+# ----------------------------------------------------------
+# INTERFAZ GRÁFICA (UI)
+# ----------------------------------------------------------
+Pillow==11.0.0                  # Convierte frames OpenCV → Tkinter PhotoImage
+# tkinter viene incluido en Python — NO requiere instalación
+# Si falta en Linux: sudo apt-get install python3-tk
+
+
+# ----------------------------------------------------------
+# CÁMARA Y VISIÓN (detección local básica para el rectángulo)
+# ----------------------------------------------------------
+# IMPORTANTE: usar opencv-contrib-python (no opencv-python)
+# para mantener compatibilidad con el servidor si se instalan en la misma máquina
+opencv-contrib-python==4.10.0.84
+numpy==1.26.4
+
+
+# ----------------------------------------------------------
+# COMUNICACIÓN CON EL SERVIDOR
+# ----------------------------------------------------------
+requests==2.32.3                # HTTP client para llamar al servidor FastAPI
+urllib3==2.2.3                  # Requerido por requests (reintentos, pool)
+
+
+# ----------------------------------------------------------
+# UTILIDADES
+# ----------------------------------------------------------
+python-dotenv==1.0.1            # Leer SERVER_URL desde .env del cliente
+
+# WebSocket (opcional — alternativa de baja latencia al HTTP polling)
+websocket-client==1.8.0
+
+
+pip install customtkinter
