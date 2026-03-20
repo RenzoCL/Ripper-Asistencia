@@ -18,6 +18,10 @@ DATABASE_URL = os.getenv(
     "sqlite:///./server/data/asistencia.db"
 )
 
+# Render/Heroku a veces entrega "postgres://" en vez de "postgresql://"
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # 2. Identificar el motor de base de datos
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 

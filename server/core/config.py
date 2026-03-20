@@ -15,7 +15,7 @@ Uso en cualquier módulo:
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from server.db.models import ModeloIA
+from server.db.enums import ModeloIA
 
 
 class Settings(BaseSettings):

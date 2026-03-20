@@ -23,39 +23,10 @@ import enum
 
 from server.db.database import Base
 
-
-# ================================================================== #
-# ENUMERACIONES (Tipos controlados para evitar errores de escritura)
-# ================================================================== #
-
-class TipoEvento(str, enum.Enum):
-    """Tipo de registro de asistencia."""
-    ENTRADA = "ENTRADA"
-    SALIDA  = "SALIDA"
-
-class EstadoAsistencia(str, enum.Enum):
-    """Estado final del día para un alumno."""
-    PRESENTE     = "PRESENTE"
-    AUSENTE      = "AUSENTE"
-    TARDANZA     = "TARDANZA"
-    JUSTIFICADO  = "JUSTIFICADO"
-
-class RolUsuario(str, enum.Enum):
-    """Roles del sistema con distintos niveles de acceso."""
-    ADMIN   = "ADMIN"    # Control total: config, reportes, usuarios
-    TUTOR   = "TUTOR"    # Asistencia de su aula + justificaciones
-    PORTERO = "PORTERO"  # Monitoreo en vivo + búsqueda manual
-
-class ModeloIA(str, enum.Enum):
-    """Niveles de reconocimiento facial disponibles."""
-    LBPH = "LBPH"   # Nivel 1: ultra ligero (PCs antiguas)
-    HOG  = "HOG"    # Nivel 2: balanceado (default)
-    CNN  = "CNN"    # Nivel 3: alta precisión (requiere GPU)
-
-class CanalNotificacion(str, enum.Enum):
-    TELEGRAM  = "TELEGRAM"
-    WHATSAPP  = "WHATSAPP"
-    INTERNO   = "INTERNO"  # Popup en pantalla del cliente
+from server.db.enums import (
+    TipoEvento, EstadoAsistencia, RolUsuario, 
+    ModeloIA, CanalNotificacion
+)
 
 
 # ================================================================== #
