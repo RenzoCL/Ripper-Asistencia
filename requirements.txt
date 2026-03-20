@@ -1,31 +1,20 @@
-# --- CORE API ---
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
-
-# --- BASE DE DATOS (Supabase + Local) ---
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
 python-dotenv==1.0.0
-
-# --- VALIDACIÓN Y CONFIGURACIÓN ---
 pydantic==2.5.3
 pydantic-settings==2.1.0
 email-validator==2.1.0.post1
-
-# --- SEGURIDAD ---
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-
-# --- VISIÓN (Versión ligera para Servidor) ---
-# Esta librería evita el error "No module named cv2" sin pesar casi nada
 opencv-python-headless==4.8.1.78
-
-# --- UTILIDADES Y REPORTES ---
 httpx==0.25.2
 aiofiles==23.2.1
-pytz==2023.3.post1
 openpyxl==3.1.2
 reportlab==4.0.9
 setuptools==69.0.3
+apscheduler==3.10.4
+pytz==2023.3.post1
