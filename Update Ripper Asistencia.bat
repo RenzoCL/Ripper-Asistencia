@@ -14,7 +14,7 @@ git commit -m "%msg%"
 if %ERRORLEVEL% NEQ 0 goto error
 
 :: Intentamos subir al repositorio de RenzoCL
-git push origin main
+git push origin master
 if %ERRORLEVEL% NEQ 0 goto error
 
 echo.
