@@ -581,22 +581,47 @@ window.onload = async () => {
 };
 
 async function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value.trim();
-  if (!u || !p) return;
-  try {
-    const data = await api('POST', '/api/auth/login', { username: u, password: p });
-    if (!data) return;
-    TOKEN = data.access_token;
-    USUARIO = data.usuario;
-    localStorage.setItem('ca_token', TOKEN);
-    localStorage.setItem('ca_user', JSON.stringify(USUARIO));
-    initApp();
-  } catch(e) {
-    const err = document.getElementById('loginError');
-    err.textContent = '❌ ' + e.message;
-    err.style.display = 'block';
-  }
+    const user = document.getElementById('user').value;
+    const pass = document.getElementById('pass').value;
+    const divRes = document.getElementById('loginResult');
+
+    if (!user || !pass) return;
+
+    divRes.innerHTML = alertDiv('⌛ Verificando...', 'info');
+
+    // Creamos el formato de formulario que pide tu API (/api/auth/login)
+    const formData = new URLSearchParams();
+    formData.append('username', user);
+    formData.append('password', pass);
+
+    try {
+        const res = await fetch(`${API}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.usuario));
+            
+            divRes.innerHTML = alertDiv('✅ ¡Bienvenido!', 'success');
+            setTimeout(() => {
+                document.getElementById('loginScreen').style.display = 'none';
+                loadDashboard(); // O la función que cargue tus datos
+            }, 1000);
+        } else {
+            // Aquí evitamos el [object Object] extrayendo el mensaje real
+            const errorMsg = data.detail && typeof data.detail === 'string' 
+                             ? data.detail 
+                             : (data.detail?.[0]?.msg || 'Credenciales incorrectas');
+            divRes.innerHTML = alertDiv('❌ ' + errorMsg, 'error');
+        }
+    } catch (e) {
+        divRes.innerHTML = alertDiv('❌ Error de conexión: ' + e.message, 'error');
+    }
 }
 
 function initApp() {
@@ -1069,7 +1094,7 @@ function toggleNetwork() {
     // Cambiamos la URL base de las peticiones
     if (isCloud) {
         // MODO NUBE
-        API = "https://tu-app-en-render.onrender.com"; // <-- PON AQUÍ TU URL DE RENDER
+        API = "https://ripper-asistencia.onrender.com"; // <-- URL DE RENDER
         label.innerText = "NUBE";
         label.style.color = "var(--blue)";
         info.innerText = "Sincronizado con internet";

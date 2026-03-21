@@ -196,7 +196,7 @@ app = FastAPI(
 # hagan requests al servidor. En producción, restringir a las IPs del colegio.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # En producción: ["http://192.168.1.*"]
+    allow_origins=["*"], # Esto permite que tu panel local se conecte a Render
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
