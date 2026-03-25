@@ -1,0 +1,23 @@
+# requirements_cliente_qt.txt — Cliente Portería (PyQt6)
+# Instalar con: pip install -r requirements_cliente_qt.txt
+
+# UI Framework
+PyQt6==6.7.1
+PyQt6-Qt6==6.7.1
+PyQt6-sip==13.8.0
+
+# Cámara y visión — contrib para cv2.face si se usa LBPH local
+# (el reconocimiento lo hace el servidor, pero esto permite detección local)
+opencv-contrib-python==4.10.0.84
+numpy==1.26.4
+Pillow==11.0.0
+
+# Comunicación con servidor
+requests==2.32.3
+urllib3==2.2.3
+
+# Config
+python-dotenv==1.0.1
+
+# WebSocket (opcional — alternativa de baja latencia)
+websocket-client==1.8.0

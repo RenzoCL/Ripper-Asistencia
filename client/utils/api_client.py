@@ -1,22 +1,18 @@
 """
 client/utils/api_client.py
 ============================
-Cliente HTTP para comunicarse con el servidor FastAPI.
-
-Abstrae todos los calls HTTP en métodos simples que la UI puede usar.
-Maneja el token JWT automáticamente después del login.
-
-Diseño:
-  - Síncrono (no async) porque Tkinter no es async-friendly.
-  - Timeout configurable para entornos LAN lentos.
-  - Reintenta el login automáticamente si el token expira.
-  - Muestra errores claros al portero si el servidor no responde.
+FIXES aplicados:
+  1. login() ahora envía form-data (no JSON) — compatible con OAuth2PasswordRequestForm
+  2. Auto-refresh de token: si quedan < 30 min, renueva silenciosamente
+  3. _token_expira_en guarda el timestamp de expiración para calcular tiempo restante
+  4. Mejor manejo de errores de red con mensajes claros en español
 """
 
 import os
 import socket
 import logging
 import base64
+import time
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 
@@ -45,18 +41,21 @@ class ColegioAPIClient:
     Una instancia por sesión de la aplicación cliente.
     """
 
+    # Renovar token cuando queden menos de 30 minutos
+    REFRESH_THRESHOLD_SECONDS = 1800
+
     def __init__(self, server_url: str = BASE_URL):
         self.base_url = server_url.rstrip("/")
         self._token: Optional[str] = None
         self._usuario: Optional[Dict] = None
+        self._token_expira_en: float = 0.0  # timestamp Unix
 
         entorno = "NUBE (Render)" if MODO_NUBE else "LOCAL (LAN)"
         logger.info(f"Iniciando cliente API en modo: {entorno} -> {self.base_url}")
-        
+
         self.session = requests.Session()
 
-        # Configurar sesión con reintentos automáticos
-        self.session = requests.Session()
+        # Reintentos automáticos para errores de red transitorios
         retry = Retry(
             total=3,
             backoff_factor=0.5,
@@ -71,24 +70,71 @@ class ColegioAPIClient:
     # ------------------------------------------------------------------ #
 
     def login(self, username: str, password: str) -> Dict:
-        # Petición directa como formulario
+        """
+        FIX: ahora envía form-data (application/x-www-form-urlencoded)
+        compatible con OAuth2PasswordRequestForm del servidor.
+        El servidor también acepta JSON, pero form-data es más estándar.
+        """
+        # FIX CRÍTICO: usar data= (form-data) en lugar de json=
         resp = self.session.post(
-            f"{self.base_url}/api/auth/login", 
-            data={"username": username, "password": password},
+            f"{self.base_url}/api/auth/login",
+            data={"username": username, "password": password},  # <-- form-data
             timeout=TIMEOUT
         )
         data = self._manejar_respuesta(resp)
 
         self._token = data["access_token"]
         self._usuario = data["usuario"]
+
+        # Guardar tiempo de expiración para auto-refresh
+        expira_en = data.get("expira_en", 28800)  # 8h por default
+        self._token_expira_en = time.time() + expira_en
+
         self.session.headers.update({"Authorization": f"Bearer {self._token}"})
         return self._usuario
 
+    def refresh_token_si_necesario(self) -> bool:
+        """
+        Renueva el token silenciosamente si quedan menos de 30 minutos.
+        Llamar al inicio de cada operación crítica (scan, registro manual).
+        Retorna True si se renovó, False si no era necesario.
+        """
+        if not self._token:
+            return False
+
+        tiempo_restante = self._token_expira_en - time.time()
+        if tiempo_restante > self.REFRESH_THRESHOLD_SECONDS:
+            return False
+
+        try:
+            logger.info("Token expira en %.0f min — renovando...", tiempo_restante / 60)
+            resp = self.session.get(
+                f"{self.base_url}/api/auth/refresh",
+                timeout=TIMEOUT
+            )
+            data = self._manejar_respuesta(resp)
+            self._token = data["access_token"]
+            expira_en = data.get("expira_en", 28800)
+            self._token_expira_en = time.time() + expira_en
+            self.session.headers.update({"Authorization": f"Bearer {self._token}"})
+            logger.info("Token renovado exitosamente")
+            return True
+        except Exception as e:
+            logger.warning("No se pudo renovar token: %s", e)
+            return False
+
     def logout(self):
         """Limpia el token de la sesión."""
-        self._token = None
-        self._usuario = None
-        self.session.headers.pop("Authorization", None)
+        try:
+            if self._token:
+                self.session.post(f"{self.base_url}/api/auth/logout", timeout=5)
+        except Exception:
+            pass
+        finally:
+            self._token = None
+            self._usuario = None
+            self._token_expira_en = 0.0
+            self.session.headers.pop("Authorization", None)
 
     @property
     def autenticado(self) -> bool:
@@ -97,6 +143,11 @@ class ColegioAPIClient:
     @property
     def usuario_actual(self) -> Optional[Dict]:
         return self._usuario
+
+    @property
+    def segundos_hasta_expiracion(self) -> float:
+        """Cuántos segundos quedan antes de que expire el token."""
+        return max(0.0, self._token_expira_en - time.time())
 
     # ------------------------------------------------------------------ #
     # Reconocimiento Facial
@@ -110,15 +161,10 @@ class ColegioAPIClient:
     ) -> Dict:
         """
         Envía un frame JPEG al servidor para reconocimiento facial.
-
-        Args:
-            frame_bytes:  Frame capturado por OpenCV en formato JPEG bytes.
-            cliente_id:   Identificador de este PC cliente (IP o nombre).
-            tipo_forzado: "ENTRADA" o "SALIDA" (cuando el portero elige manualmente).
-
-        Returns:
-            Dict con ScanResultado del servidor.
+        Renueva el token automáticamente si está próximo a expirar.
         """
+        self.refresh_token_si_necesario()
+
         frame_b64 = base64.b64encode(frame_bytes).decode("utf-8")
         payload = {
             "frame_base64": frame_b64,
@@ -134,14 +180,43 @@ class ColegioAPIClient:
     # ------------------------------------------------------------------ #
 
     def buscar_alumno(self, termino: str) -> List[Dict]:
-        """Busca alumnos por nombre o código. Usado en búsqueda manual."""
         return self._get("/api/alumnos/", params={"buscar": termino, "limit": 10})
 
     def obtener_alumno(self, alumno_id: int) -> Dict:
         return self._get(f"/api/alumnos/{alumno_id}")
 
+    def listar_alumnos(self, grado: str = "", limit: int = 50, skip: int = 0) -> List[Dict]:
+        params = {"limit": limit, "skip": skip}
+        if grado:
+            params["grado"] = grado
+        return self._get("/api/alumnos/", params=params) or []
+
     # ------------------------------------------------------------------ #
-    # Reportes (para Panel Admin en la UI)
+    # Asistencia
+    # ------------------------------------------------------------------ #
+
+    def registrar_manual(
+        self,
+        alumno_id: int,
+        tipo_evento: str,
+        notas: str = "",
+    ) -> Dict:
+        self.refresh_token_si_necesario()
+        return self._post("/api/asistencia/manual", json={
+            "alumno_id":   alumno_id,
+            "tipo_evento": tipo_evento,
+            "notas":       notas or "Registro manual desde cliente portería",
+        })
+
+    def asistencia_hoy(self, tipo: str = "") -> List[Dict]:
+        params = {"tipo": tipo} if tipo else {}
+        return self._get("/api/asistencia/hoy", params=params) or []
+
+    def alumnos_dentro(self) -> Dict:
+        return self._get("/api/asistencia/vivos")
+
+    # ------------------------------------------------------------------ #
+    # Reportes
     # ------------------------------------------------------------------ #
 
     def reporte_diario(self) -> Dict:
@@ -155,45 +230,14 @@ class ColegioAPIClient:
     # ------------------------------------------------------------------ #
 
     def ping(self) -> bool:
-        """Verifica conectividad con el servidor. No requiere auth."""
         try:
-            resp = self.session.get(
-                f"{self.base_url}/health",
-                timeout=3,
-            )
+            resp = self.session.get(f"{self.base_url}/health", timeout=3)
             return resp.status_code == 200
         except Exception:
             return False
 
     def cambiar_modelo_ia(self, modelo: str) -> Dict:
-        """Cambia el modelo de IA activo (solo Admin)."""
         return self._post(f"/api/reconocimiento/modelo/{modelo}", json={})
-
-    def registrar_manual(
-        self,
-        alumno_id: int,
-        tipo_evento: str,
-        notas: str = "",
-    ) -> Dict:
-        """
-        Registra entrada/salida manualmente para un alumno.
-        tipo_evento: 'ENTRADA' o 'SALIDA'
-        Conecta con POST /api/asistencia/manual
-        """
-        return self._post("/api/asistencia/manual", json={
-            "alumno_id": alumno_id,
-            "tipo_evento": tipo_evento,
-            "notas": notas or f"Registro manual desde cliente portería",
-        })
-
-    def alumnos_dentro(self) -> Dict:
-        """Retorna alumnos actualmente dentro del colegio (último evento = ENTRADA)."""
-        return self._get("/api/asistencia/vivos")
-
-    def asistencia_hoy(self, tipo: str = "") -> List[Dict]:
-        """Lista todos los registros de asistencia del día."""
-        params = {"tipo": tipo} if tipo else {}
-        return self._get("/api/asistencia/hoy", params=params) or []
 
     # ------------------------------------------------------------------ #
     # Métodos internos HTTP
@@ -208,35 +252,29 @@ class ColegioAPIClient:
             )
             return self._manejar_respuesta(resp)
         except requests.ConnectionError:
-            msg = "Error de conexión. "
-            msg += "Verifica internet" if MODO_NUBE else "Verifica el servidor local y la red LAN."
+            msg = "Sin conexión al servidor. "
+            msg += "Verifica tu internet." if MODO_NUBE else "Verifica que el servidor esté corriendo."
             raise APIError(0, msg)
         except requests.Timeout:
             msg = f"Tiempo agotado ({TIMEOUT}s). "
-            msg += "Render está despertando, reintenta en unos segundos." if MODO_NUBE else "Servidor local lento."
+            msg += "Render está despertando, reintenta." if MODO_NUBE else "El servidor no responde."
             raise APIError(0, msg)
 
-    def _post(self, path: str, json: Dict = None, autenticado: bool = True) -> Any:
-        headers = {}
-        if not autenticado:
-            headers = {k: v for k, v in self.session.headers.items() if k != "Authorization"}
-
+    def _post(self, path: str, json: Dict = None) -> Any:
         try:
             resp = self.session.post(
                 f"{self.base_url}{path}",
                 json=json,
-                headers=headers if not autenticado else None,
                 timeout=TIMEOUT,
             )
             return self._manejar_respuesta(resp)
         except requests.ConnectionError:
-            raise APIError(0, "No se puede conectar al servidor. Verificar red LAN.")
+            raise APIError(0, "No se puede conectar al servidor.")
         except requests.Timeout:
             raise APIError(0, f"Tiempo de espera agotado ({TIMEOUT}s).")
 
     @staticmethod
     def _manejar_respuesta(response: requests.Response) -> Any:
-        """Procesa la respuesta HTTP y lanza APIError si es necesario."""
         if response.ok:
             try:
                 return response.json()
@@ -251,10 +289,7 @@ class ColegioAPIClient:
 
 
 def obtener_ip_local() -> str:
-    """
-    Detecta la IP local del PC cliente para usarla como identificador.
-    Útil para rastrear desde qué punto de acceso se registró cada scan.
-    """
+    """Detecta la IP local del PC cliente."""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))

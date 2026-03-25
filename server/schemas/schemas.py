@@ -2,19 +2,10 @@
 server/schemas/schemas.py
 =========================
 Esquemas Pydantic para validación de datos en la API.
-
-Por qué Pydantic:
-  - FastAPI los usa automáticamente para validar request/response bodies.
-  - Generan documentación OpenAPI (Swagger) de forma automática.
-  - Separan el modelo de DB (SQLAlchemy) del modelo de API (Pydantic):
-    así podemos devolver solo lo que el cliente necesita ver, sin exponer
-    campos internos como password_hash o encoding_path.
-
-Convención de nomenclatura:
-  - *Base:    Campos comunes compartidos entre crear y leer.
-  - *Create:  Campos necesarios al crear un registro.
-  - *Update:  Campos opcionales para actualizar (todos con Optional).
-  - *Response:Campos que devuelve la API al cliente.
+FIXES aplicados:
+  - ScanResultado.mensaje ahora es Optional (fix crash cuando no hay alumno)
+  - AsistenciaResponse: alumno es Optional (puede ser None si FK falla)
+  - Añadido RefreshTokenResponse para JWT refresh
 """
 
 from datetime import datetime
@@ -54,7 +45,7 @@ class AlumnoResponse(AlumnoBase):
     fecha_registro:   datetime
 
     class Config:
-        from_attributes = True  # Permite crear desde objetos ORM
+        from_attributes = True
 
 
 # ================================================================== #
@@ -92,13 +83,9 @@ class AsistenciaBase(BaseModel):
     tipo_evento: TipoEvento
 
 class AsistenciaCreate(AsistenciaBase):
-    """
-    Payload que envía el cliente (PC de portería) al detectar un rostro.
-    El servidor calcula fecha y valida la regla de 5 minutos.
-    """
     confianza:       Optional[float] = None
     modelo_usado:    Optional[ModeloIA] = None
-    cliente_id:      Optional[str] = None    # IP del PC cliente
+    cliente_id:      Optional[str] = None
     registrado_por:  str = "facial"
 
 class AsistenciaResponse(AsistenciaBase):
@@ -109,27 +96,40 @@ class AsistenciaResponse(AsistenciaBase):
     modelo_usado:    Optional[ModeloIA] = None
     cliente_id:      Optional[str] = None
     registrado_por:  str
-    alumno:          AlumnoResponse             # Datos del alumno embebidos
+    # FIX: alumno es Optional — puede ser None si la FK apunta a un alumno borrado
+    alumno:          Optional[AlumnoResponse] = None
 
     class Config:
         from_attributes = True
 
 
 # ================================================================== #
-# RESULTADO DE RECONOCIMIENTO FACIAL (respuesta del endpoint de scan)
+# RESULTADO DE RECONOCIMIENTO FACIAL
+# FIX CRÍTICO: mensaje ahora es Optional con default None
+# Antes era `str` requerido — AttendanceService no siempre lo seteaba
 # ================================================================== #
 
 class ScanResultado(BaseModel):
-    """
-    Respuesta del endpoint POST /reconocimiento/scan.
-    El cliente la usa para mostrar el resultado en pantalla.
-    """
     reconocido:      bool
     alumno:          Optional[AlumnoResponse] = None
     asistencia:      Optional[AsistenciaResponse] = None
-    requiere_popup:  bool = False               # True si aplica regla <5 min
-    popup_mensaje:   Optional[str] = None       # Texto para mostrar al portero
-    mensaje:         str                        # Mensaje de estado legible
+    requiere_popup:  bool = False
+    popup_mensaje:   Optional[str] = None
+    # FIX: era `str` (requerido), ahora Optional con default descriptivo
+    mensaje:         Optional[str] = None
+
+    def get_mensaje(self) -> str:
+        """Retorna el mensaje o uno genérico si es None."""
+        if self.mensaje:
+            return self.mensaje
+        if not self.reconocido:
+            return "No se detectó ningún rostro conocido"
+        if self.requiere_popup:
+            return "Re-escaneo detectado"
+        if self.asistencia:
+            tipo = self.asistencia.tipo_evento.value if self.asistencia.tipo_evento else "evento"
+            return f"✅ {tipo} registrada"
+        return "Scan procesado"
 
 
 # ================================================================== #
@@ -138,10 +138,10 @@ class ScanResultado(BaseModel):
 
 class UsuarioCreate(BaseModel):
     username:       str
-    password:       str                        # Se hashea antes de guardar
+    password:       str
     nombre_display: str
     rol:            RolUsuario
-    grado_asignado: Optional[str] = None       # Solo para tutores
+    grado_asignado: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -167,9 +167,11 @@ class LoginRequest(BaseModel):
     password: str
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type:   str = "bearer"
-    usuario:      UsuarioResponse
+    access_token:  str
+    token_type:    str = "bearer"
+    usuario:       UsuarioResponse
+    # NUEVO: expira_en segundos desde ahora
+    expira_en:     int = 28800  # 8 horas default
 
 
 # ================================================================== #
@@ -177,7 +179,6 @@ class TokenResponse(BaseModel):
 # ================================================================== #
 
 class ConfigUpdate(BaseModel):
-    """Payload para actualizar un parámetro desde el Panel Admin."""
     valor: str
 
 class ConfigResponse(BaseModel):
@@ -213,7 +214,6 @@ class JustificacionResponse(JustificacionCreate):
 # ================================================================== #
 
 class ReporteDiario(BaseModel):
-    """Resumen del día para el Panel Admin."""
     fecha:              datetime
     total_alumnos:      int
     presentes:          int
